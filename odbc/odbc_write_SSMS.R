@@ -17,7 +17,7 @@ summary(rtn_table)
 
 ## replace (0.01) format to numeric
 
-rtn_table1<-rtn_table%>%mutate(EP = as.numeric(str_replace_all(rtn_table$EP, c('\\)'= '', '\\(' = '-', ','= ''))),
+rtn_table1<-rtn_table%>%mutate(EP = as.numeric(str_replace_all(EP, c('\\)'= '', '\\(' = '-', ','= ''))),
                                INC_LOSS = as.numeric(str_replace_all(INC_LOSS, c('\\)'= '', '\\(' = '-', ','= ''))),
                                ZIP = as.character(ZIP),
                                EFFDT_enc = as.character(EFFDT_enc),
