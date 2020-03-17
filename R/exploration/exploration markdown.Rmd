@@ -23,12 +23,14 @@ library(patchwork)
 library(ggExtra)
 library(e1071) ##for skewness
 library(lubridate) ## for checking the dates
+library(knitr)
+library(kableExtra) ## for pretty tables
 
 ```
 
 This is some text after the chunck of code
 
-```{r, warning = FALSE, message = FALSE}
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
 ## read the file in 
 
 sample_data<-read_csv("C:/Users/mlogan/Desktop/sample.csv", 
@@ -37,13 +39,9 @@ sample_data<-read_csv("C:/Users/mlogan/Desktop/sample.csv",
 ## rename the file
 dr_data <-as.data.frame(sample_data)
 
-class(dr_data)         
-
 ```
 
-A bit more cleaning here
-
-```{r}
+```{r, echo = FALSE}
 ### convert characters to factors
 
 dt<-sapply(dr_data, typeof) ## extract types of data from our sample
@@ -57,9 +55,6 @@ src_names<-grep("^src", names(dr_data), value=TRUE)
 dr_data[char_names]<-lapply(dr_data[char_names], factor)
 dr_data[src_names]<-lapply(dr_data[src_names], factor)
 
-## check what happened
-
-summary(dr_data[,1:10])
 
 ## let's see what data types we have here
 
@@ -73,7 +68,10 @@ var_types<-var_types%>%arrange(var_types)
 
 ## see variable types in the dataset
 
-var_types%>%group_by(var_types)%>%count()%>%ungroup
+var_types_summary<-var_types%>%group_by(var_types)%>%count()%>%arrange(n) %>%ungroup
+
+var_types_summary%>%kable(col.names = c('Data Type', '# of Variables')) %>%
+    kable_styling("bordered", full_width = F, position = "left")
 
 ## let's subset our dataset by var type
 
@@ -84,10 +82,10 @@ dr_data_date<- dr_data%>%select_if(is.Date)
 ```
 
 
-Now, we do the fancy loop
+## Now, we do the fancy loop
 
 
-```{r numeric, echo = FALSE, message = FALSE, warning = FALSE}
+```{r numeric, echo = FALSE, message = FALSE, warning = FALSE, fig.width= 4, fig.height=3.5, fig.align = "left"}
 
 ## numeric variables
 
@@ -100,7 +98,7 @@ for(i in names(sub_data)) {
   p1<-sub_data %>% ggplot() + 
     ## geom_histogram(aes(x = sub_data[,i])) +
     geom_density(aes(x = sub_data[,i])) +
-    labs (title = paste(i,  class(sub_data[, i]) ),
+    labs (title = paste(i),
           x = '',
           y = '') +
     theme_bw()
@@ -129,8 +127,8 @@ for(i in names(sub_data)) {
   cat(head(sort(sub_data[, i], decreasing=F), 5),"\n" )
   
   ## show the top largest values
-  print("Five largest values are:") 
-  print(head(sort(sub_data[, i], decreasing = T),5))
+  cat("Five largest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing = T),5), "\n")
   
 }
 ```
