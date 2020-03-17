@@ -1,0 +1,139 @@
+---
+title: "Data Exploration Sample"
+author: "Masha Logan"
+date: "3/17/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is a practice.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+.libPaths("C:/Users/mlogan/Desktop/R_Packages")
+
+library(tidyverse)
+library(ggstance)
+library(patchwork)
+library(ggExtra)
+library(e1071) ##for skewness
+library(lubridate) ## for checking the dates
+
+```
+
+This is some text after the chunck of code
+
+```{r, warning = FALSE, message = FALSE}
+## read the file in 
+
+sample_data<-read_csv("C:/Users/mlogan/Desktop/sample.csv", 
+         guess_max = 264164, na = c("N/A", "", "NA", "NULL", "<NA>", "-"))
+
+## rename the file
+dr_data <-as.data.frame(sample_data)
+
+class(dr_data)         
+
+```
+
+A bit more cleaning here
+
+```{r}
+### convert characters to factors
+
+dt<-sapply(dr_data, typeof) ## extract types of data from our sample
+char_names<-names(which(dt == "character")) ## see what are characters
+
+## also see that everything that starts with "src_" gets converted to factor as well
+
+src_names<-grep("^src", names(dr_data), value=TRUE)
+
+## convert all char to factors
+dr_data[char_names]<-lapply(dr_data[char_names], factor)
+dr_data[src_names]<-lapply(dr_data[src_names], factor)
+
+## check what happened
+
+summary(dr_data[,1:10])
+
+## let's see what data types we have here
+
+var_types<-sapply(dr_data, class)
+var_types<-as.data.frame(var_types)
+
+# make rownames to be the first column 
+
+var_types<-rownames_to_column(var_types)
+var_types<-var_types%>%arrange(var_types)
+
+## see variable types in the dataset
+
+var_types%>%group_by(var_types)%>%count()%>%ungroup
+
+## let's subset our dataset by var type
+
+dr_data_num<- dr_data%>%select_if(is.numeric)
+dr_data_fact<- dr_data%>%select_if(is.factor)
+dr_data_date<- dr_data%>%select_if(is.Date)
+
+```
+
+
+Now, we do the fancy loop
+
+
+```{r numeric, echo = FALSE, message = FALSE, warning = FALSE}
+
+## numeric variables
+
+
+sub_data<-dr_data_num
+
+for(i in names(sub_data)) {
+  
+  ## density plot
+  p1<-sub_data %>% ggplot() + 
+    ## geom_histogram(aes(x = sub_data[,i])) +
+    geom_density(aes(x = sub_data[,i])) +
+    labs (title = paste(i,  class(sub_data[, i]) ),
+          x = '',
+          y = '') +
+    theme_bw()
+  
+  ## boxplot
+  p2<- sub_data %>% 
+    ## geom_histogram(aes(x = sub_data[,i])) +
+    ggplot(aes(y = '', x = sub_data[,i])) +
+    geom_boxploth(outlier.colour = "red") +
+    labs (x = paste (i),
+          y = '') +
+    theme_bw()
+  
+  ## gotta use print to show the plot
+  print(p1/p2)
+  
+  ## 5 number summary 
+  print(summary(sub_data[, i])) 
+  
+  ## Skewness rounded to 4 decimal places
+  
+  cat(paste("The skewness is", round(skewness(sub_data[, i], na.rm =T),4)), "\n")
+  
+  ## show the top 5 smallest values 
+  cat("Five smallest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing=F), 5),"\n" )
+  
+  ## show the top largest values
+  print("Five largest values are:") 
+  print(head(sort(sub_data[, i], decreasing = T),5))
+  
+}
+```
+
+
+
