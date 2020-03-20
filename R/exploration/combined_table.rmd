@@ -1,0 +1,278 @@
+---
+title: "Data Exploration: AI_Combined_File_Final"
+author: "Masha Logan"
+date: "3/17/2020"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Description: 
+
+This part describe the overall quality and important findings for each data set used in the analysis.  This is equivalent an “Executive Summary” of a regular report
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+.libPaths("C:/Users/mlogan/Desktop/R_Packages")
+
+library(tidyverse)
+library(ggstance)
+library(patchwork)
+library(ggExtra)
+library(e1071) ##for skewness
+library(lubridate) ## for checking the dates
+library(knitr)
+library(kableExtra) ## for pretty tables
+library(stats) ## for setting names
+library(crayon)
+
+```
+
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE}
+## read the file in 
+
+sample_data<-read_csv("C:/Users/mlogan/Desktop/AI_Combined_File_Final.csv", 
+         guess_max = 264164, na = c("N/A", "", "NA", "NULL", "<NA>", "-"))
+
+## rename the file
+dr_data <-as.data.frame(sample_data)
+
+```
+
+The dataset contains `r nrow(sample_data)` observations of `r ncol(sample_data)` variables.
+
+```{r, echo = FALSE}
+### convert characters to factors
+
+dt<-sapply(dr_data, typeof) ## extract types of data from our sample
+char_names<-names(which(dt == "character")) ## see what are characters
+
+## also see that everything that starts with "src_" gets converted to factor as well
+
+src_names<-grep("^src", names(dr_data), value=TRUE)
+no_names<-grep("^no_of_", names(dr_data), value=TRUE)
+
+## convert all char to factors
+##dr_data[char_names]<-lapply(dr_data[char_names], factor)
+dr_data[src_names]<-lapply(dr_data[src_names], as.character)
+
+
+## let's see what data types we have here
+
+var_types<-sapply(dr_data, class)
+var_types<-as.data.frame(var_types)
+
+# make rownames to be the first column 
+
+var_types<-rownames_to_column(var_types)
+var_types<-var_types%>%arrange(var_types)
+
+```
+
+The types of these variables are the following:
+
+```{r, echo = FALSE}
+
+## see variable types in the dataset
+
+var_types_summary<-var_types%>%group_by(var_types)%>%count()%>%arrange(n) %>%ungroup
+
+var_types_summary%>%kable(col.names = c('Data Type', '# of Variables')) %>%
+    kable_styling("bordered", full_width = F, position = "left")
+
+```
+
+
+```{r, echo = FALSE}
+## let's subset our dataset by var type
+
+dr_data_num_cont<- dr_data%>%select_if(is.numeric)%>%select(-no_names, -MOD, -CLAIMCOUNT, LITINDICATOR) ## all contd vars
+dr_data_num_desc<- dr_data%>%select(no_names, MOD, CLAIMCOUNT, LITINDICATOR) ## discrete vars
+dr_data_fact<- dr_data%>%select_if(is.factor)
+dr_data_date<- dr_data%>%select_if(is.Date)
+dr_data_char<- dr_data%>%select_if(is.character)
+
+```
+
+
+### Description of each variable
+
+</p>
+
+#### Timestamp variables
+</p>
+
+
+```{r timestamp, echo = FALSE, message = FALSE, warning = FALSE, fig.width= 6, fig.height=3.5, fig.align = "left", comment = NA}
+
+
+for(i in names(dr_data_date)) {
+  
+## print the variable name
+  
+  cat("-", paste(i), "\n")
+  cat("\n")
+  
+ ## 5 number summary 
+  print(summary(dr_data_date[, i])) 
+  
+  cat("\n")
+  cat("\n")
+  
+}
+
+
+```
+
+
+#### Categorical Variables
+</p>
+
+
+```{r categorical, echo = FALSE, message = FALSE, warning = FALSE, fig.width= 6, fig.height=3.5, fig.align = "left", comment = NA}
+
+
+for(i in names(dr_data_char)) {
+  
+## print the variable name
+  
+  cat("-", paste(i), "\n")
+  cat("\n")
+  
+  
+## bar chart
+
+# p3<-ggplot(dr_data_char, aes(x = dr_data_char[,i])) +
+#   geom_bar(stat= 'count', color = "black", fill = "lightgray") + 
+#   labs (title = paste(i),
+#         x = paste (i),
+#         y = '') +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# 
+# print(p3)
+  
+
+## Cardinality
+
+cardinal<-dr_data_char[,i] %>% n_distinct()
+cat(paste("Cardinality:", cardinal, "\n"))
+
+## Missing values
+
+missing<- sum(is.na(dr_data_char[,i]))
+cat(paste("Missing Values:", missing, "\n"))
+
+## Smallest Cell Value and Frequency
+
+small<-dr_data_char %>% count(dr_data_char[,i])%>%arrange(n)%>%filter(n == min(n))%>%
+setNames(c('x','n'))
+cat("Smallest Cell Value and Frequency:", "\n")
+## table
+
+print(small)
+cat("\n")
+cat("\n")
+
+}
+
+```
+
+
+#### Numeric Variables
+</p>
+
+```{r numeric_cont, echo = FALSE, message = FALSE, warning = FALSE, fig.width= 4, fig.height=3.5, fig.align = "left", comment = NA}
+
+## numeric variables - continuous only
+
+
+sub_data<-dr_data_num_cont
+
+for(i in names(sub_data)) {
+  
+  ## density plot
+  p1<-sub_data %>% ggplot() + 
+    ## geom_histogram(aes(x = sub_data[,i])) +
+    geom_density(aes(x = sub_data[,i])) +
+    labs (title = paste(i),
+          x = '',
+          y = '') +
+    theme_bw()
+  
+  ## boxplot
+  p2<- sub_data %>% 
+    ## geom_histogram(aes(x = sub_data[,i])) +
+    ggplot(aes(y = '', x = sub_data[,i])) +
+    geom_boxploth(outlier.colour = "red") +
+    labs (x = paste (i),
+          y = '') +
+    theme_bw()
+  
+  ## gotta use print to show the plot
+  print(p1/p2)
+  
+  ## 5 number summary 
+  print(summary(sub_data[, i])) 
+  
+  ## Skewness rounded to 4 decimal places
+  
+  cat(paste("The skewness is", round(skewness(sub_data[, i], na.rm =T),4)), "\n")
+  
+  ## show the top 5 smallest values 
+  cat("Five smallest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing=F), 5),"\n" )
+  
+  ## show the top largest values
+  cat("Five largest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing = T),5), "\n")
+  
+}
+```
+
+
+
+```{r numeric_desc, echo = FALSE, message = FALSE, warning = FALSE, fig.width= 4, fig.height=3.5, fig.align = "left", comment = NA}
+
+## numeric variables - continuous only
+
+
+sub_data<-dr_data_num_desc
+
+for(i in names(sub_data)) {
+  
+  ## barchart plot
+
+  p3<-ggplot(sub_data, aes(x = sub_data[,i])) +
+  geom_bar(stat= 'count', color = "black", fill = "lightgray") +
+  labs (title = paste(i),
+        x = paste (i),
+        y = '') +
+        theme_bw()
+
+  print(p3)
+  
+  
+  ## 5 number summary 
+  print(summary(sub_data[, i])) 
+  
+  ## Skewness rounded to 4 decimal places
+  
+  cat(paste("The skewness is", round(skewness(sub_data[, i], na.rm =T),4)), "\n")
+  
+  ## show the top 5 smallest values 
+  cat("Five smallest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing=F), 5),"\n" )
+  
+  ## show the top largest values
+  cat("Five largest values are: ") 
+  cat(head(sort(sub_data[, i], decreasing = T),5), "\n")
+  
+}
+```
