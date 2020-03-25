@@ -1,2 +1,2 @@
 # work
-Some useful code snippets in SQL and R
+Some useful/reusable code snippets in SQL and R
