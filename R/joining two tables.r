@@ -38,9 +38,9 @@ summary(ln_data)
 
 table3<-left_join(response_var_table, ln_data , 
                   by = c("PolicyNumber" = "POLICYNUMBER"))
-
 summary(table3)
 
+## save the final file
 
 write_csv(table3,"C:/Users/mlogan/Desktop/Wei's Project/Data and Response Combined/AI_Combined_File_Final_transformed2_response.csv")
 
